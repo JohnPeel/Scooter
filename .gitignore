@@ -87,3 +87,7 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# Google API auth files
+*-oauth2.json
+client_secrets.json
