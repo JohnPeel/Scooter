@@ -1,6 +1,6 @@
 irc
 isodate
-yaml
+pyyaml
 httplib2
 oauth2client
 google-api-python-client
