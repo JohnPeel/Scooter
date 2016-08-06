@@ -4,6 +4,8 @@
 import irc
 import irc.bot
 import irc.strings
+import irc.connection
+import ssl
 import yaml
 import re, json
 import collections
@@ -50,8 +52,12 @@ url_hooks = {
 }
 
 class Scooter(irc.bot.SingleServerIRCBot):
-    def __init__(self, nickname, realname, channels, server, admin_key, port=6667):
-        super(Scooter, self).__init__([(server, port)], nickname, realname)
+    def __init__(self, nickname, realname, channels, server, admin_key, use_ssl, port=6667):
+        if use_ssl:
+            super(Scooter, self).__init__([(server, port)], nickname, realname, connect_factory=irc.connection.Factory(wrapper=ssl.wrap_socket))
+        else:
+            super(Scooter, self).__init__([(server, port)], nickname, realname)
+
         self.chans = channels
         self.admin = None
         self.admin_key = admin_key
@@ -131,6 +137,8 @@ class Scooter(irc.bot.SingleServerIRCBot):
                     c.privmsg(e.target, ret[1])
 
 
+import logging
+
 def main():
     global badwords
     try:
@@ -138,7 +146,7 @@ def main():
 
         load_badwords(config['badwords'])
 
-        bot = Scooter(config['server']['nick'], config['server']['real'], config['server']['channels'], config['server']['addr'], config['server']['admin_key'], config['server']['port'])
+        bot = Scooter(config['server']['nick'], config['server']['real'], config['server']['channels'], config['server']['addr'], config['server']['admin_key'], config['server']['ssl'], config['server']['port'])
         bot.start()
     except yaml.YAMLError as e:
         print("Error in configuration file: ", e)

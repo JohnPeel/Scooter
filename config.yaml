@@ -1,7 +1,8 @@
 ---
 server:
   addr: "irc.rizon.net"
-  port: 6667
+  ssl: True
+  port: 6697
   nick: Scooter2
   real: "Scott Daisy"
   admin_key: ~
