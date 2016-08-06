@@ -6,35 +6,9 @@ import irc.bot
 import irc.strings
 import re, json
 import collections
+import isodate
 from urllib.parse import urlparse, parse_qs
 from youtube import yt_service
-
-def to_secs(data):
-    data = re.split('(\d+)', data)
-
-    hour = min = sec = 0
-    in_time = False
-    assert data[0][0] == 'P'
-    data[0] = data[0][1:]
-
-    while (len(data) > 0):
-        if (data[0] == 'T'):
-            in_time = True
-            data = data[1:]
-
-        # Implement date....
-
-        if (in_time):
-            if (data[1] == 'H'):
-                hour = int(data[0])
-            if (data[1] == 'M'):
-                min = int(data[0])
-            if (data[1] == 'S'):
-                sec = int(data[0])
-
-        data = data[2:]
-
-    return (hour, min, sec)
 
 last_vids = {}
 def get_youtube(target, vid):
@@ -52,8 +26,7 @@ def get_youtube(target, vid):
     ret = [True, u'[YouTube]: %s' % (entry['snippet']['title'])]
 
     if ('duration' in entry['contentDetails']) and (len(entry['contentDetails']['duration']) > 0):
-        (hours, mins, secs) = to_secs(entry['contentDetails']['duration'])
-        ret[1] += u' [%.2d:%.2d:%.2d]' % (hours, mins, secs)
+        ret[1] += u' [%s]' % (isodate.strftime(isodate.parse_duration(entry['contentDetails']['duration']), '%H:%M:%S'))
 
     ret[1] += u' (Views: %s)' % entry['statistics']['viewCount']
     
