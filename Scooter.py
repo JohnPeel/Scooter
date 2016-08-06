@@ -4,6 +4,7 @@
 import irc
 import irc.bot
 import irc.strings
+import yaml
 import re, json
 import collections
 import isodate
@@ -33,13 +34,14 @@ def get_youtube(target, vid):
     return ret
 
 url = re.compile('(((https?|ftp):\/\/)|www\.)?(([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)|localhost|([a-zA-Z0-9\-]+\.)*[a-zA-Z0-9\-]+\.(com|net|org|info|biz|gov|name|edu|pro|[a-zA-Z][a-zA-Z]))(:[0-9]+)?((\/|\?)[^ "]*[^ ,;\.:">)])?', re.I)
-badwords = ['.kb Wizzup', 's\'cute', 'gucci', 'should of', 'would of', 'could of',
-            'need to of', 'alot', 'wouldn\'t of', 'couldn\'t of', 'shouldn\'t of',
-            'shouldnt of', 'couldnt of', 'wouldnt of', '.k BenLand100', '.kb BenLand100',
-            '.op', 'thru', 'eet', 'ghey', 'dontjoinitsatrap', 'guize', 'exhentai']
-for i, badword in enumerate(badwords):
-    badwords[i] = re.compile(r'(\s*' + badword[:1] + r')('+ badword[1:] + r'\s*)', re.I or re.U)
+badwords = []
 goodword = r'\1' + '\xe2\x80\x8c' + r'\2'
+
+def load_badwords(new_badwords):
+    global badwords
+    badwords = []
+    for badword in new_badwords:
+        badwords.append(re.compile(r'(\s*' + badword[:1] + r')('+ badword[1:] + r'\s*)', re.I or re.U))
 
 url_hooks = {
     'www.youtube.com': [get_youtube, lambda x: x.path[3:] if (x.path[0:2] == '/v') else parse_qs(x.query)['v'][0]],
@@ -48,36 +50,80 @@ url_hooks = {
 }
 
 class Scooter(irc.bot.SingleServerIRCBot):
-    def __init__(self, nickname, realname, channels, server, port=6667):
+    def __init__(self, nickname, realname, channels, server, admin_key, port=6667):
         super(Scooter, self).__init__([(server, port)], nickname, realname)
         self.chans = channels
-    
+        self.admin = None
+        self.admin_key = admin_key
+
+    def reload_config(self, c):
+        global badwords
+        config = yaml.safe_load(open('config.yaml', 'r'))
+        
+        load_badwords(config['badwords'])
+
+        if (not (config['server']['nick'] == c.get_nickname())):
+            c.nick(config['server']['nick'])
+
+        cur_channels = set(self.channels.keys())
+        new_channels = set(config['server']['channels'])
+
+        for channel in cur_channels - new_channels: c.part(channel)
+        for channel in new_channels - cur_channels: c.join(channel)
+
     def on_nicknameinuse(self, c, e):
         c.nick('_' + c.get_nickname())
 
     def on_welcome(self, c, e):
-        c.mode(c.get_nickname, '-x')
+        c.mode(c.get_nickname(), '-x')
         for channel in self.chans:
             c.join(channel)
 
+    def set_admin(self, admin):
+        self.admin = admin # Meh, lambda wont allow just an assign...
+        
+    def process_command(self, c, e):
+        commands = {
+            'login': lambda c, e: self.set_admin(e.source) if (e.arguments[1] == self.admin_key) else c.notice(e.source.nick, 'You do not have access to that command.'),
+            'reload': lambda c, e: self.reload_config(c) if (e.source == self.admin) else c.notice(e.source.nick, 'You do not have access to that command.'),
+            'nick': lambda c, e: c.nick(e.arguments[1]) if (e.source == self.admin) else c.notice(e.source.nick, 'You do not have access to that command.'),
+            'say': lambda c, e: c.privmsg(e.arguments[1], ' '.join(e.arguments[2:])) if (e.source == self.admin) else c.notice(e.source.nick, 'You do not have access to that command.'),
+            'action': lambda c, e: c.action(e.arguments[1], ' '.join(e.arguments[2:])) if (e.source == self.admin) else c.notice(e.source.nick, 'You do not have access to that command.'),
+            'join': lambda c, e: c.join(e.arguments[1]) if (e.source == self.admin) else c.notice(e.source.nick, 'You do not have access to that command.'),
+            'part': lambda c, e: c.part(e.arguments[1]) if (e.source == self.admin) else c.notice(e.source.nick, 'You do not have access to that command.'),
+        }
+
+        if (e.arguments[0].lower() in commands):
+            commands[e.arguments[0].lower()](c, e)
+
+    def on_privmsg(self, c, e):
+        message = ' '.join(e.arguments)
+        e.arguments = message.split(' ')
+        print('[%s] %s: %s' % (e.target, e.source.split('!')[0], message))
+        self.process_command(c, e)
+
     def on_pubmsg(self, c, e):
         message = ' '.join(e.arguments)
+        e.arguments = message.split(' ')
         print('[%s] %s: %s' % (e.target, e.source.split('!')[0], message))
         
+        if (e.arguments[0].lower() == c.get_nickname().lower() + ':'):
+            e.arguments.pop(0)
+            self.process_command(c, e)
+
         url_pos = url.search(message)
         if url_pos:
             urldata = urlparse(message[url_pos.start():url_pos.end()])
             if (not urldata.scheme):
                 urldata = urlparse('http://' + message[url_pos.start():url_pos.end()])
 
-            if (urldata.netloc in url_hooks):
+            netloc = urldata.netloc.lower()
+            if (netloc in url_hooks):
                 ret = [False, '']
                 try:
-                    ret = url_hooks[urldata.netloc][0](e.target, url_hooks[urldata.netloc][1](urldata))
+                    ret = url_hooks[netloc][0](e.target, url_hooks[netloc][1](urldata))
                     for badword in badwords:
                         ret[1] = badword.sub(goodword, ret[1])
-                except GeneratorExit:
-                    pass
                 except Exception as e:
                     print('Exception: %s (on %s)' % (e, urldata))
 
@@ -86,8 +132,16 @@ class Scooter(irc.bot.SingleServerIRCBot):
 
 
 def main():
-    bot = Scooter('Scooter2', 'Scott Daisy', ['#dgby'], 'irc.rizon.net')
-    bot.start()
+    global badwords
+    try:
+        config = yaml.safe_load(open('config.yaml', 'r'))
+
+        load_badwords(config['badwords'])
+
+        bot = Scooter(config['server']['nick'], config['server']['real'], config['server']['channels'], config['server']['addr'], config['server']['admin_key'], config['server']['port'])
+        bot.start()
+    except yaml.YAMLError as e:
+        print("Error in configuration file: ", e)
 
 if __name__ == '__main__':
     main()

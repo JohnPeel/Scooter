@@ -1,0 +1,10 @@
+---
+server:
+  addr: "irc.rizon.net"
+  port: 6667
+  nick: Scooter2
+  real: "Scott Daisy"
+  admin_key: ~
+  channels: 
+   - "#dgby"
+badwords: []
