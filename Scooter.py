@@ -84,13 +84,13 @@ class Scooter(irc.bot.SingleServerIRCBot):
         
     def process_command(self, c, e):
         commands = {
-            'login': lambda c, e: self.set_admin(e.source) if (e.arguments[1] == self.admin_key) else c.notice(e.source.nick, 'You do not have access to that command.'),
-            'reload': lambda c, e: self.reload_config(c) if (e.source == self.admin) else c.notice(e.source.nick, 'You do not have access to that command.'),
-            'nick': lambda c, e: c.nick(e.arguments[1]) if (e.source == self.admin) else c.notice(e.source.nick, 'You do not have access to that command.'),
-            'say': lambda c, e: c.privmsg(e.arguments[1], ' '.join(e.arguments[2:])) if (e.source == self.admin) else c.notice(e.source.nick, 'You do not have access to that command.'),
-            'action': lambda c, e: c.action(e.arguments[1], ' '.join(e.arguments[2:])) if (e.source == self.admin) else c.notice(e.source.nick, 'You do not have access to that command.'),
-            'join': lambda c, e: c.join(e.arguments[1]) if (e.source == self.admin) else c.notice(e.source.nick, 'You do not have access to that command.'),
-            'part': lambda c, e: c.part(e.arguments[1]) if (e.source == self.admin) else c.notice(e.source.nick, 'You do not have access to that command.'),
+            'login': lambda c, e: self.set_admin(e.source) if ((len(e.arguments) == 2) and (e.arguments[1] == self.admin_key)) else c.notice(e.source.nick, 'You do not have access to that command.'),
+            'reload': lambda c, e: self.reload_config(c) if ((len(e.arguments) == 1) and (e.source == self.admin)) else c.notice(e.source.nick, 'You do not have access to that command.'),
+            'nick': lambda c, e: c.nick(e.arguments[1]) if ((len(e.arguments) == 2) and (e.source == self.admin)) else c.notice(e.source.nick, 'You do not have access to that command.'),
+            'say': lambda c, e: c.privmsg(e.arguments[1], ' '.join(e.arguments[2:])) if ((len(e.arguments) >= 3)) and (e.source == self.admin) else c.notice(e.source.nick, 'You do not have access to that command.'),
+            'action': lambda c, e: c.action(e.arguments[1], ' '.join(e.arguments[2:])) if ((len(e.arguments) >= 3)) and (e.source == self.admin) else c.notice(e.source.nick, 'You do not have access to that command.'),
+            'join': lambda c, e: c.join(e.arguments[1]) if ((len(e.arguments) == 2) and (e.source == self.admin)) else c.notice(e.source.nick, 'You do not have access to that command.'),
+            'part': lambda c, e: c.part(e.arguments[1]) if ((len(e.arguments) == 2) and (e.source == self.admin)) else c.notice(e.source.nick, 'You do not have access to that command.'),
         }
 
         if (e.arguments[0].lower() in commands):
@@ -103,7 +103,7 @@ class Scooter(irc.bot.SingleServerIRCBot):
         self.process_command(c, e)
 
     def on_pubmsg(self, c, e):
-        message = ' '.join(e.arguments)
+        message = e.arguments[0]
         e.arguments = message.split(' ')
         print('[%s] %s: %s' % (e.target, e.source.split('!')[0], message))
         
