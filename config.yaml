@@ -1,11 +1,13 @@
 ---
-server:
-  addr: "irc.rizon.net"
-  ssl: True
-  port: 6697
-  nick: Scooter2
-  real: "Scott Daisy"
-  admin_key: ~
-  channels: 
-   - "#dgby"
+loglevel: DEBUG
+servers:
+  "irc.rizon.net":
+    port: 6697
+    nick: Scooter2
+    user: scott
+    real: "Scott Daisy"
+    admins:
+     - Dgby714
+    channels:
+     - "#dgby"
 badwords: []

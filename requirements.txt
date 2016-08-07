@@ -1,4 +1,4 @@
-irc
+pydle
 isodate
 pyyaml
 httplib2
