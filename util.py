@@ -18,7 +18,7 @@ def has_url(data):
     return None
 
 badwords = []
-goodword = r'\1' + '\xe2\x80\x8c' + r'\2'
+goodword = r'\1' + u'\ufeff' + r'\2' # Zero Width Space =)
 
 def load_badwords(new_badwords):
     global badwords

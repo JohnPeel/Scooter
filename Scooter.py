@@ -44,6 +44,8 @@ class Scooter(pydle.Client):
         if (len(arguments) > 2):
             if (arguments[0].lower() == self.nickname.lower() + ':'):
                 process_command(self, source, target, arguments[1], arguments[2:])
+            if (arguments[0][0] == '!'):
+                process_command(self, source, target, arguments[1][1:], arguments[2:])
 
         url = has_url(message)
         if url:
